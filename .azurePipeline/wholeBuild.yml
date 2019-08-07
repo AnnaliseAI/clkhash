@@ -74,15 +74,3 @@ jobs:
     displayName: 'Send coverage to codecov'
     condition: succeededOrFailed()
 
-  - script: |
-      pyinstaller cli.spec
-      .\dist\clkutil.exe --version
-    displayName: 'Build clkutil.exe'
-    condition: and(eq(variables['operatingSystem'], 'vs2017-win2016'), eq(variables['pythonVersion'], '3.7'), eq(variables['architecture'], 'x86'))
-
-  - task: PublishPipelineArtifact@0
-    displayName: 'Publish artifacts in Azure'
-    condition: and(eq(variables['pythonVersion'], '3.7'), eq(variables['architecture'], 'x86'))
-    inputs:
-      artifactName: Artifacts
-      targetPath: 'dist/'

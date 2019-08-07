@@ -10,17 +10,60 @@ pr:
     include:
     - '*'
 
-jobs:
-- template: .azurePipeline/wholeBuild.yml  # Template reference
-  parameters:
-    pythonVersions: ['3.7', '3.6', '3.5', '2.7']
-#    operatingSystems: ['ubuntu-16.04', 'macos-10.13', 'vs2017-win2016']
-    operatingSystems: ['vs2017-win2016']
-    architectures: ['x64', 'x86']
+stages:
+  - stage: 'pretest'
+    displayName: 'Pre Test'
+    jobs:
+      - job:
+        displayName: "Check Git Tags"
+        steps:
+          # In this step, if this build is triggered by a tag, it will add a tag 'Automated' to the current build.
+          - script: echo "##vso[build.addbuildtag]Automated"
+            condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+      - job:
+        displayName: 'Typechecking'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.7'
 
-- job:
-  displayName: "Check Git Tags"
-  steps:
-# In this step, if this build is triggered by a tag, it will add a tag 'Automated' to the current build.
-  - script: echo "##vso[build.addbuildtag]Automated"
-    condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+          - script: |
+              python -m pip install -U mypy
+              mypy clkhash --ignore-missing-imports --no-implicit-optional --disallow-untyped-calls
+            displayName: 'mypy'
+  - stage: "Unittest"
+    jobs:
+    - template: .azurePipeline/wholeBuild.yml  # Template reference
+      parameters:
+        pythonVersions: ['3.7', '3.6', '3.5', '2.7']
+    #    operatingSystems: ['ubuntu-16.04', 'macos-10.13', 'vs2017-win2016']
+        operatingSystems: ['vs2017-win2016']
+        architectures: ['x64', 'x86']
+
+  - stage: "Publish"
+    jobs:
+      - job:
+        pool:
+          vmImage: 'vs2017-win2016'
+        steps:
+          - task: UsePythonVersion@0
+              inputs:
+                versionSpec: '3.7'
+
+          - script: |
+              python -m pip install -U pip wheel setuptools
+            displayName: 'Install build requirements'
+
+          - script: python setup.py sdist bdist_wheel
+            displayName: 'Package'
+
+          - script: |
+              pyinstaller cli.spec
+              .\dist\clkutil.exe --version
+            displayName: 'Build clkutil.exe'
+
+          - task: PublishPipelineArtifact@0
+            displayName: 'Publish artifacts in Azure'
+            inputs:
+              artifactName: Artifacts
+              targetPath: 'dist/'
