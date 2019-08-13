@@ -63,17 +63,16 @@ jobs:
       pytest --nbval docs -x --sanitize-with docs/tutorial_sanitize.cfg
     displayName: 'Test all notebooks'
     condition: and(ne(variables['operatingSystem'], 'vs2017-win2016'), ne(variables['pythonVersion'], '2.7'))
-  # This step currently fails. Cf issue #287 https://github.com/data61/clkhash/issues/287
-  #- bash: |
-  #    python -m pip install -U -r docs/doc-requirements-others.txt
-  #    list_file=''
-  #    for file in $(cat docs/list_tutorials_without_anonlink.txt)
-  #    do
-  #      list_file="$list_file docs/$file"
-  #    done
-  #    pytest --nbval -x --sanitize-with docs/tutorial_sanitize.cfg $list_file
-  #  displayName: 'Test notebooks without anonlink'
-  #  condition: and(eq(variables['operatingSystem'], 'vs2017-win2016'), ne(variables['pythonVersion'], '2.7'))
+  - bash: |
+      python -m pip install -U -r docs/doc-requirements-others.txt
+      list_file=''
+      for file in $(cat docs/list_tutorials_without_anonlink.txt)
+      do
+        list_file="$list_file docs/$file"
+      done
+      pytest --nbval -x --sanitize-with docs/tutorial_sanitize.cfg $list_file
+    displayName: 'Test notebooks without anonlink'
+    condition: and(eq(variables['operatingSystem'], 'vs2017-win2016'), ne(variables['pythonVersion'], '2.7'))
 
   - task: PublishTestResults@2
     displayName: 'Publish test results in Azure'
